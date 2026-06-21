@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1c1c1e">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%88%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<title>flydata — анализ цен на билеты</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --lime:#B5E531;
+  --lime-dark:#1a2400;
+  --lime-hover:#c8f03d;
+  --grad:linear-gradient(135deg,#B2ED40 0%,#5FC79E 50%,#019AF8 100%);
+  --grad-soft:linear-gradient(135deg,rgba(178,237,64,0.16) 0%,rgba(95,199,158,0.14) 50%,rgba(1,154,248,0.16) 100%);
+  --dark:#1c1c1e;
+  --dark2:#262628;
+  --bg:#1c1c1e;
+  --card:#262628;
+  --card2:#2c2c2e;
+  --border:#3a3a3c;
+  --text:#f4f4f3;
+  --text2:#a3a3a6;
+  --text3:#6e6e72;
+  --red:#ff6b69;
+  --red-bg:rgba(255,107,105,0.14);
+  --red-text:#ff8d8b;
+  --green-bg:rgba(178,237,64,0.16);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.app{max-width:900px;margin:0 auto;padding:20px 16px 60px}
+
+/* TOPBAR */
+.topbar{background:var(--dark2);border-radius:16px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;border:1px solid var(--border);box-shadow:0 1px 2px rgba(0,0,0,0.2),0 8px 24px rgba(0,0,0,0.18)}
+.nav-pills{display:flex;gap:6px}
+.npill{font-size:12px;color:rgba(255,255,255,0.45);padding:5px 12px;border-radius:20px;cursor:pointer;border:none;background:transparent;transition:all 0.15s}
+.npill:hover{color:rgba(255,255,255,0.7)}
+.npill.active{background:var(--grad);color:#0b1400;font-weight:600}
+
+/* SEARCH */
+.search-card{background:var(--card);border-radius:16px;border:1px solid var(--border);padding:20px;margin-bottom:20px;box-shadow:0 1px 2px rgba(0,0,0,0.2),0 8px 24px rgba(0,0,0,0.18)}
+.search-grid{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end}
+.field label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em}
+.field select{
+  width:100%;height:42px;border-radius:10px;font-size:14px;
+  background:var(--grad);color:#0b1400;font-weight:600;
+  border:1.5px solid transparent;padding:0 12px;
+  appearance:none;-webkit-appearance:none;
+  background-image:var(--grad),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%230b1400' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat,no-repeat;background-position:0 0,right 12px center;
+  background-size:100% 100%,auto;
+  cursor:pointer;
+}
+.field select:focus{outline:2px solid var(--lime);outline-offset:2px}
+.field select option{background:#262628;color:#f4f4f3;font-weight:400}
+
+/* AUTOCOMPLETE */
+.ac-field{position:relative}
+.ac-input{
+  width:100%;height:42px;border-radius:10px;font-size:14px;
+  background:var(--grad);color:#0b1400;font-weight:600;
+  border:1.5px solid transparent;padding:0 12px;
+}
+.ac-input::placeholder{color:rgba(11,20,0,0.55)}
+.ac-input:focus{outline:2px solid var(--lime);outline-offset:2px}
+.ac-list{
+  position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:20;
+  background:var(--card2);border:1px solid var(--border);border-radius:10px;
+  max-height:240px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  display:none;
+}
+.ac-list.open{display:block}
+.ac-item{padding:9px 12px;font-size:13px;color:var(--text);cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+.ac-item:hover,.ac-item.hl{background:rgba(178,237,64,0.1)}
+.ac-item .ac-code{color:var(--text3);font-size:11px;font-family:monospace;flex-shrink:0}
+.ac-empty{padding:9px 12px;font-size:12px;color:var(--text3)}
+.go-btn{
+  height:42px;background:var(--grad);color:#0b1400;border:none;
+  border-radius:10px;font-size:14px;font-weight:700;
+  padding:0 24px;cursor:pointer;white-space:nowrap;
+  display:flex;align-items:center;gap:8px;transition:filter 0.15s,transform 0.1s
+}
+.go-btn:hover{filter:brightness(1.08)}
+.go-btn:active{transform:scale(0.98)}
+.go-btn svg{flex-shrink:0}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.mc{background:var(--grad-soft);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.mc-label{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em}
+.mc-val{font-size:22px;font-weight:700;color:var(--text)}
+.mc-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.lime-val{color:#c3f25a}
+.red-val{color:var(--red)}
+
+/* SECTION */
+.section-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 1px 2px rgba(0,0,0,0.2),0 8px 24px rgba(0,0,0,0.18);transition:box-shadow 0.2s}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.section-title{font-size:14px;font-weight:600;color:var(--text)}
+.legend{display:flex;gap:12px;font-size:11px;color:var(--text2)}
+.leg-dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:middle}
+.chart-wrap{position:relative;width:100%;height:200px}
+
+/* DAYS */
+.days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.day-col{text-align:center}
+.day-name{font-size:10px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase}
+.day-bar-wrap{height:64px;display:flex;align-items:flex-end;justify-content:center}
+.day-bar{width:26px;border-radius:4px 4px 0 0;transition:opacity 0.15s}
+.day-bar:hover{opacity:0.75}
+.day-price{font-size:10px;color:var(--text2);margin-top:5px;font-weight:500}
+.day-badge{font-size:9px;padding:2px 5px;border-radius:3px;margin-top:3px;display:inline-block;font-weight:600}
+.badge-cheap{background:var(--green-bg);color:#c3f25a}
+.badge-exp{background:var(--red-bg);color:var(--red-text)}
+
+/* REASONS */
+.reasons{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rcard{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px}
+.rcard-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.rtag{font-size:10px;padding:3px 8px;border-radius:4px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em}
+.rtag-lime{background:var(--green-bg);color:#c3f25a}
+.rtag-red{background:var(--red-bg);color:var(--red-text)}
+.rtag-neu{background:rgba(255,255,255,0.08);color:var(--text2)}
+.rtitle{font-size:13px;font-weight:600;color:var(--text)}
+.rtext{font-size:12px;color:var(--text2);line-height:1.6}
+
+/* FLIGHTS */
+.fcard{
+  border:1px solid var(--border);border-radius:12px;padding:14px 18px;
+  margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;background:var(--card2);transition:border-color 0.15s
+}
+.fcard:hover{border-color:#555}
+.fcard.best{border:2px solid transparent;background:linear-gradient(var(--card2),var(--card2)) padding-box,var(--grad) border-box}
+.fcard-route{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.fcard-meta{font-size:12px;color:var(--text2)}
+.fcard-price{font-size:20px;font-weight:700;color:var(--text);text-align:right}
+.fcard-diff{font-size:11px;margin-top:2px;text-align:right;font-weight:600}
+.best-tag{background:var(--grad);color:#0b1400;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700}
+
+/* STATES */
+.state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;gap:12px}
+.state-icon{font-size:44px;line-height:1}
+.state-title{font-size:15px;font-weight:600;color:var(--text)}
+.state-text{font-size:13px;color:var(--text2);text-align:center;max-width:320px;line-height:1.5}
+.fly-icon{display:inline-block;animation:fly 1.6s ease-in-out infinite}
+@keyframes fly{0%,100%{transform:translateX(0) translateY(0) rotate(0deg)}50%{transform:translateX(6px) translateY(-4px) rotate(3deg)}}
+.error-box{background:var(--red-bg);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--red-text)}
+
+@media(max-width:640px){
+  .search-grid{grid-template-columns:1fr 1fr;}.go-btn{grid-column:span 2}
+  .metrics{grid-template-columns:1fr 1fr}
+  .reasons{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <svg width="90" height="18" viewBox="0 0 157 31" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.6684 25.9349C17.6684 26.2938 17.8771 26.5331 18.2946 26.6228C18.6823 26.7424 19.1595 26.6826 19.6963 26.4733C20.2033 26.2639 20.6507 25.8452 21.0384 25.247C20.77 25.1872 20.3823 25.1274 19.8753 25.0975C19.3683 25.0676 18.8911 25.0975 18.4438 25.1872C17.9964 25.277 17.728 25.5461 17.6684 25.9349ZM29.866 5.11914H34.0114C33.743 5.7173 33.0869 7.24259 32.0431 9.72493C30.9694 12.2073 29.866 14.7793 28.7625 17.4112C27.6292 20.0431 26.824 21.8974 26.3767 22.9741C27.1223 23.1834 27.9871 23.4825 29.0309 23.8713C30.0449 24.2601 30.7905 24.7087 31.2677 25.1872L29.5677 28.2079C28.6432 27.5799 27.1223 26.9219 24.9452 26.2041C23.7821 28.0584 22.2611 29.2547 20.3524 29.7631C18.7718 30.2117 17.2807 30.2416 15.9088 29.8229C14.5071 29.4341 13.5826 28.6266 13.0756 27.4602C12.7476 26.4733 12.7774 25.4863 13.1651 24.4694C13.5528 23.4825 14.2089 22.7348 15.1334 22.2862C16.2667 21.8376 17.5192 21.6282 18.8911 21.688C20.263 21.7777 21.4857 21.9273 22.5593 22.1366C22.7383 21.7179 22.947 21.2394 23.1856 20.7011C23.4242 20.1328 23.633 19.6543 23.8119 19.2057L17.7578 5.11914H21.8436L25.8697 14.4504L29.866 5.11914Z" fill="#B5E531"/>
+      <path d="M10.4652 8.32H7.07942V21.12H3.07801V8.32H0V5.12H3.07801V4.16C3.07801 3.24267 3.18061 2.50667 3.38581 1.952C3.59101 1.39733 3.88855 0.981334 4.27843 0.704C4.68883 0.405334 5.17105 0.213334 5.72509 0.128C6.29965 0.0426668 6.9563 0 7.69502 0H10.4652V3.2H8.31062C7.7771 3.2 7.43852 3.328 7.29488 3.584C7.15124 3.84 7.07942 4.24533 7.07942 4.8V5.12H10.4652V8.32Z" fill="white"/>
+      <path d="M12.0006 0.32H16.002V21.12H12.0006V0.32Z" fill="white"/>
+      <path d="M51.1045 8.32H47.7187V21.12H43.7173V8.32H40.6393V5.12H43.7173V4.16C43.7173 3.24267 43.8199 2.50667 44.0251 1.952C44.2303 1.39733 44.5279 0.981334 44.9177 0.704C45.3281 0.405334 45.8104 0.213334 46.3644 0.128C46.939 0.0426668 47.5956 0 48.3343 0H51.1045V3.2H48.9499C48.4164 3.2 48.0778 3.328 47.9342 3.584C47.7905 3.84 47.7187 4.24533 47.7187 4.8V5.12H51.1045V8.32Z" fill="white"/>
+      <path d="M52.6399 0.32H56.6413V21.12H52.6399V0.32Z" fill="white"/>
+      <path d="M62.3797 13.92C62.4207 14.816 62.5438 15.5733 62.749 16.192C62.9747 16.7893 63.262 17.28 63.6109 17.664C63.9802 18.0267 64.3906 18.2933 64.8421 18.464C65.314 18.6347 65.8168 18.72 66.3503 18.72C67.2737 18.72 68.0021 18.4427 68.5357 17.888C69.0692 17.3333 69.418 16.6507 69.5822 15.84H73.5836C73.44 16.608 73.1937 17.344 72.8449 18.048C72.496 18.7307 72.0241 19.3387 71.429 19.872C70.8544 20.384 70.1362 20.8 69.2744 21.12C68.4126 21.44 67.3865 21.6 66.1964 21.6C64.8421 21.6 63.6622 21.376 62.6567 20.928C61.6717 20.48 60.8407 19.872 60.1635 19.104C59.5069 18.336 59.0144 17.44 58.6861 16.416C58.3577 15.3707 58.1936 14.272 58.1936 13.12C58.1936 11.968 58.3577 10.88 58.6861 9.856C59.0144 8.81067 59.5069 7.904 60.1635 7.136C60.8407 6.368 61.6717 5.76 62.6567 5.312C63.6622 4.864 64.8421 4.64 66.1964 4.64C68.5972 4.64 70.4543 5.376 71.7676 6.848C73.0809 8.29867 73.7375 10.2293 73.7375 12.64V13.92H62.3797ZM66.1964 7.52C65.3756 7.52 64.6061 7.78667 63.8879 8.32C63.1902 8.85333 62.7182 9.81333 62.472 11.2H69.5822C69.5001 9.92 69.141 8.992 68.5049 8.416C67.8893 7.81867 67.1198 7.52 66.1964 7.52Z" fill="white"/>
+      <path d="M84.9686 5.12H89.7395L84.0452 12.8L90.0473 21.12H85.2764L81.7367 15.52L78.197 21.12H73.4261L79.4282 12.8L73.7339 5.12H78.5048L81.7367 10.08L84.9686 5.12Z" fill="white"/>
+    </svg>
+    <div class="nav-pills">
+      <button class="npill active">✈️ Анализ цен</button>
+      <button class="npill">Мои маршруты</button>
+      <button class="npill">Алерты</button>
+    </div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="search-card">
+    <div class="search-grid">
+      <div class="field ac-field">
+        <label>Откуда</label>
+        <input class="ac-input" id="from" type="text" autocomplete="off" placeholder="Город или аэропорт" value="Москва (MOW)" data-code="MOW">
+        <div class="ac-list" id="from-list"></div>
+      </div>
+      <div class="field ac-field">
+        <label>Куда</label>
+        <input class="ac-input" id="to" type="text" autocomplete="off" placeholder="Город или аэропорт" value="Барселона (BCN)" data-code="BCN">
+        <div class="ac-list" id="to-list"></div>
+      </div>
+      <div class="field">
+        <label>Месяц</label>
+        <select id="month"></select>
+      </div>
+      <button class="go-btn" onclick="search()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Найти
+      </button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results"></div>
+
+</div>
+
+<script>
+const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const WEEK = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+
+let priceChart = null;
+
+(function initMonths(){
+  const sel = document.getElementById('month');
+  const now = new Date();
+  for(let i=0;i<12;i++){
+    const d = new Date(now.getFullYear(), now.getMonth()+i, 1);
+    const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    sel.appendChild(opt);
+  }
+})();
+
+function fmt(n){ return Math.round(n).toLocaleString('ru-RU') }
+
+/* ---------- АВТОДОПОЛНЕНИЕ ГОРОДОВ/АЭРОПОРТОВ ---------- */
+function setupAutocomplete(inputId, listId){
+  const input = document.getElementById(inputId);
+  const list = document.getElementById(listId);
+  let items = [];
+  let hlIndex = -1;
+  let debounceTimer = null;
+  let lastTerm = '';
+
+  function closeList(){ list.classList.remove('open'); list.innerHTML = ''; hlIndex = -1; }
+
+  function render(){
+    if(!items.length){
+      list.innerHTML = `<div class="ac-empty">Ничего не найдено</div>`;
+      list.classList.add('open');
+      return;
+    }
+    list.innerHTML = items.map((it,i) => `
+      <div class="ac-item${i===hlIndex?' hl':''}" data-idx="${i}">
+        <span>${it.label}</span><span class="ac-code">${it.code}</span>
+      </div>`).join('');
+    list.classList.add('open');
+  }
+
+  async function runSearch(term){
+    if(term.length < 2){ closeList(); return; }
+    if(term === lastTerm) return;
+    lastTerm = term;
+    try {
+      const resp = await fetch(`/.netlify/functions/autocomplete?term=${encodeURIComponent(term)}`);
+      const data = await resp.json();
+      items = (Array.isArray(data) ? data : []).slice(0, 8).map(d => ({
+        code: d.code,
+        label: `${d.name} (${d.code})`
+      }));
+      hlIndex = -1;
+      render();
+    } catch(e){
+      closeList();
+    }
+  }
+
+  input.addEventListener('input', () => {
+    input.removeAttribute('data-code');
+    const term = input.value.trim();
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => runSearch(term), 300);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if(!list.classList.contains('open')) return;
+    if(e.key === 'ArrowDown'){ e.preventDefault(); hlIndex = Math.min(hlIndex+1, items.length-1); render(); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); hlIndex = Math.max(hlIndex-1, 0); render(); }
+    else if(e.key === 'Enter'){ e.preventDefault(); if(hlIndex>=0) selectItem(hlIndex); }
+    else if(e.key === 'Escape'){ closeList(); }
+  });
+
+  function selectItem(i){
+    const it = items[i];
+    if(!it) return;
+    input.value = it.label;
+    input.dataset.code = it.code;
+    closeList();
+  }
+
+  list.addEventListener('mousedown', (e) => {
+    const row = e.target.closest('.ac-item');
+    if(!row) return;
+    selectItem(parseInt(row.dataset.idx));
+  });
+
+  document.addEventListener('click', (e) => {
+    if(!input.contains(e.target) && !list.contains(e.target)) closeList();
+  });
+}
+setupAutocomplete('from','from-list');
+setupAutocomplete('to','to-list');
+
+async function search(){
+  const fromInput = document.getElementById('from');
+  const toInput = document.getElementById('to');
+  const origin = fromInput.dataset.code;
+  const dest = toInput.dataset.code;
+  const month = document.getElementById('month').value;
+
+  if(!origin){ alert('Выберите город отправления из списка подсказок'); fromInput.focus(); return; }
+  if(!dest){ alert('Выберите город назначения из списка подсказок'); toInput.focus(); return; }
+
+  document.getElementById('results').innerHTML = `
+    <div class="section-card"><div class="state">
+      <div class="state-icon fly-icon">✈️</div>
+      <div class="state-title">Ищем лучшие цены…</div>
+      <div class="state-text">Запрашиваем цены у Aviasales</div>
+    </div></div>`;
+
+  try {
+    const [year, mon] = month.split('-');
+    const url = `/.netlify/functions/prices?currency=rub&origin=${origin}&destination=${dest}&month=${month}-01`;
+    const resp = await fetch(url);
+    const raw = await resp.text();
+
+    let json;
+    try {
+      json = JSON.parse(raw);
+    } catch {
+      throw new Error(`Сервер вернул не JSON (статус ${resp.status}). Похоже, функция /.netlify/functions/prices не задеплоена — проверьте, что файл лежит по пути netlify/functions/prices.js.`);
+    }
+
+    if(!json.success || !json.data || json.data.length === 0){
+      document.getElementById('results').innerHTML = `
+        <div class="section-card"><div class="state">
+          <div class="state-icon">✈️</div>
+          <div class="state-title">${json.error ? 'Ошибка' : 'Данных нет'}</div>
+          <div class="state-text">${json.error ? json.error : 'По этому маршруту и месяцу нет данных. Попробуйте другое направление или период.'}</div>
+          ${json.raw ? `<div class="state-text" style="font-family:monospace;font-size:11px;opacity:0.7;white-space:pre-wrap">${json.raw}</div>` : ''}
+        </div></div>`;
+      return;
+    }
+
+    renderResults(json.data, origin, dest, month, year, mon, fromInput.value, toInput.value);
+
+  } catch(e) {
+    document.getElementById('results').innerHTML = `
+      <div class="section-card">
+        <div class="error-box">Ошибка запроса: ${e.message}</div>
+      </div>`;
+  }
+}
+
+function renderResults(data, origin, dest, month, year, mon, fromLabel, toLabel){
+  const prices = {};
+  data.forEach(d => { prices[d.depart_date] = d.value; });
+
+  const days = Object.keys(prices).sort();
+  const vals = days.map(d => prices[d]);
+  const minPrice = Math.min(...vals);
+  const maxPrice = Math.max(...vals);
+  const avgPrice = Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+  const bestDay = days[vals.indexOf(minPrice)];
+  const worstDay = days[vals.indexOf(maxPrice)];
+  const saving = Math.round((1 - minPrice/maxPrice)*100);
+
+  const bestDayName = new Date(bestDay+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+  const worstDayName = new Date(worstDay+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+
+  // by weekday
+  const byWeekday = {0:[],1:[],2:[],3:[],4:[],5:[],6:[]};
+  days.forEach(d => {
+    const wd = (new Date(d+'T12:00:00').getDay()+6)%7;
+    byWeekday[wd].push(prices[d]);
+  });
+  const wdAvg = Array.from({length:7},(_,i)=> byWeekday[i].length ? Math.round(byWeekday[i].reduce((a,b)=>a+b,0)/byWeekday[i].length) : null);
+  const wdMin = Math.min(...wdAvg.filter(Boolean));
+  const wdMax = Math.max(...wdAvg.filter(Boolean));
+
+  // chart colors
+  const barColors = vals.map(v => v <= minPrice*1.1 ? '#B2ED40' : v >= maxPrice*0.9 ? '#ff6b69' : '#48484a');
+  const labels = days.map(d => parseInt(d.split('-')[2]));
+
+  // top 5 cheapest
+  const sorted = [...data].sort((a,b)=>a.value-b.value).slice(0,5);
+
+  // season analysis
+  const monNum = parseInt(mon);
+  const isHighSeason = [6,7,8,12].includes(monNum);
+  const isLowSeason = [1,2,3,11].includes(monNum);
+
+  const fromCity = (fromLabel||origin).split(',')[0].replace(/\s*\([A-Z]{3}\)\s*$/,'');
+  const toCity = (toLabel||dest).split(',')[0].replace(/\s*\([A-Z]{3}\)\s*$/,'');
+
+  document.getElementById('results').innerHTML = `
+
+    <div class="metrics">
+      <div class="mc">
+        <div class="mc-label">Лучшая цена</div>
+        <div class="mc-val lime-val">${fmt(minPrice)} ₽</div>
+        <div class="mc-sub">${bestDayName}</div>
+      </div>
+      <div class="mc">
+        <div class="mc-label">Средняя цена</div>
+        <div class="mc-val">${fmt(avgPrice)} ₽</div>
+        <div class="mc-sub">за месяц</div>
+      </div>
+      <div class="mc">
+        <div class="mc-label">Худшая цена</div>
+        <div class="mc-val red-val">${fmt(maxPrice)} ₽</div>
+        <div class="mc-sub">${worstDayName}</div>
+      </div>
+      <div class="mc">
+        <div class="mc-label">Экономия</div>
+        <div class="mc-val lime-val">−${saving}%</div>
+        <div class="mc-sub">лучший vs худший день</div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-head">
+        <div class="section-title">Цены по датам — ${fromCity} → ${toCity}</div>
+        <div class="legend">
+          <span><span class="leg-dot" style="background:#B2ED40"></span>Дёшево</span>
+          <span><span class="leg-dot" style="background:#48484a"></span>Норма</span>
+          <span><span class="leg-dot" style="background:#ff6b69"></span>Дорого</span>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="priceChart" role="img" aria-label="График цен по датам. Минимум ${fmt(minPrice)} руб, максимум ${fmt(maxPrice)} руб.">${fromCity} → ${toCity}: от ${fmt(minPrice)} до ${fmt(maxPrice)} рублей.</canvas>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-head"><div class="section-title">Лучшие дни недели для вылета</div></div>
+      <div class="days-grid">
+        ${WEEK.map((name,i) => {
+          if(!wdAvg[i]) return `<div class="day-col"><div class="day-name">${name}</div><div class="day-bar-wrap"><div class="day-bar" style="height:4px;background:#3a3a3c"></div></div><div class="day-price">—</div></div>`;
+          const h = Math.round(12 + (wdAvg[i]-wdMin)/(wdMax-wdMin||1)*52);
+          const color = wdAvg[i] <= wdMin*1.1 ? '#B2ED40' : wdAvg[i] >= wdMax*0.9 ? '#ff6b69' : '#48484a';
+          const badge = wdAvg[i] <= wdMin*1.1
+            ? `<div><span class="day-badge badge-cheap">лучший</span></div>`
+            : wdAvg[i] >= wdMax*0.9
+            ? `<div><span class="day-badge badge-exp">дорого</span></div>` : '';
+          return `<div class="day-col">
+            <div class="day-name">${name}</div>
+            <div class="day-bar-wrap"><div class="day-bar" style="height:${h}px;background:${color}"></div></div>
+            <div class="day-price">${fmt(wdAvg[i])} ₽</div>
+            ${badge}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-head"><div class="section-title">Почему цены такие</div></div>
+      <div class="reasons">
+        <div class="rcard">
+          <div class="rcard-head"><span class="rtag rtag-lime">Совет</span><span class="rtitle">Лучшее время — ${bestDayName}</span></div>
+          <div class="rtext">Минимальная цена ${fmt(minPrice)} ₽. Это на ${saving}% дешевле самого дорогого дня. Вторник и среда исторически дают наименьшие цены из-за низкого спроса.</div>
+        </div>
+        <div class="rcard">
+          <div class="rcard-head"><span class="rtag rtag-red">Пик</span><span class="rtitle">Дорого — ${worstDayName}</span></div>
+          <div class="rtext">Максимум ${fmt(maxPrice)} ₽. Выходные и праздники — пик туристического спроса. Алгоритм авиакомпании поднимает цену при высоком заполнении.</div>
+        </div>
+        <div class="rcard">
+          <div class="rcard-head"><span class="rtag ${isHighSeason?'rtag-red':isLowSeason?'rtag-lime':'rtag-neu'}">${isHighSeason?'Высокий':'Низкий'} сезон</span><span class="rtitle">${MONTHS[parseInt(mon)-1]}</span></div>
+          <div class="rtext">${isHighSeason
+            ? `${MONTHS[parseInt(mon)-1]} — пик туристического сезона. Все цены выше нормы на 25–50%. Бронируйте как можно раньше.`
+            : isLowSeason
+            ? `${MONTHS[parseInt(mon)-1]} — низкий сезон. Отличное время для путешествий: меньше туристов и цены ниже на 20–40%.`
+            : `${MONTHS[parseInt(mon)-1]} — межсезонье. Умеренный спрос, цены близки к среднегодовым.`
+          }</div>
+        </div>
+        <div class="rcard">
+          <div class="rcard-head"><span class="rtag rtag-neu">Когда покупать</span><span class="rtitle">Окно бронирования</span></div>
+          <div class="rtext">Для направления ${toCity} оптимально брать билеты за 4–8 недель. Раньше — цены ещё высокие, позже — мест меньше и цена снова растёт.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-head"><div class="section-title">Лучшие варианты рейсов</div></div>
+      ${sorted.map((f,i) => {
+        const d = new Date(f.depart_date+'T12:00:00');
+        const dateStr = d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',weekday:'short'});
+        const diff = Math.round((f.value-avgPrice)/avgPrice*100);
+        const diffStr = diff<0 ? `<span style="color:#c3f25a">−${Math.abs(diff)}% от средней</span>` : `<span style="color:#a3a3a6">+${diff}% от средней</span>`;
+        return `<div class="fcard${i===0?' best':''}">
+          <div>
+            <div class="fcard-route">${origin} → ${dest}${i===0?'<span class="best-tag">лучший</span>':''}</div>
+            <div class="fcard-meta">${dateStr} · прямой / с пересадкой</div>
+          </div>
+          <div>
+            <div class="fcard-price">${fmt(f.value)} ₽</div>
+            <div class="fcard-diff">${diffStr}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+
+  if(priceChart){ priceChart.destroy(); }
+  priceChart = new Chart(document.getElementById('priceChart'),{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{data:vals,backgroundColor:barColors,borderRadius:3,borderSkipped:false}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#2c2c2e',titleColor:'#f4f4f3',bodyColor:'#f4f4f3',borderColor:'#3a3a3c',borderWidth:1,padding:8,callbacks:{label:c=>`${fmt(c.parsed.y)} ₽`}}},
+      scales:{
+        x:{ticks:{color:'#6e6e72',font:{size:10},maxTicksLimit:15,autoSkip:true},grid:{color:'rgba(255,255,255,0.06)'}},
+        y:{ticks:{color:'#6e6e72',font:{size:10},callback:v=>(v/1000).toFixed(0)+'k'},grid:{color:'rgba(255,255,255,0.06)'}}
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
