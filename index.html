@@ -6,7 +6,6 @@
 <meta name="theme-color" content="#1c1c1e">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%88%EF%B8%8F%3C/text%3E%3C/svg%3E">
 <title>flydata — анализ цен на билеты</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -44,11 +43,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .search-grid{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end}
 .field label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em}
 .field select{
-  width:100%;height:42px;border-radius:10px;font-size:14px;
-  background:var(--grad);color:#0b1400;font-weight:600;
+  width:100%;height:42px;border-radius:14px;font-size:14px;
+  background:var(--grad);color:#ffffff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,0.3);
   border:1.5px solid transparent;padding:0 12px;
   appearance:none;-webkit-appearance:none;
-  background-image:var(--grad),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%230b1400' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image:var(--grad),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23ffffff' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat:no-repeat,no-repeat;background-position:0 0,right 12px center;
   background-size:100% 100%,auto;
   cursor:pointer;
@@ -59,11 +58,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* AUTOCOMPLETE */
 .ac-field{position:relative}
 .ac-input{
-  width:100%;height:42px;border-radius:10px;font-size:14px;
-  background:var(--grad);color:#0b1400;font-weight:600;
+  width:100%;height:42px;border-radius:14px;font-size:14px;
+  background:var(--grad);color:#ffffff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,0.3);
   border:1.5px solid transparent;padding:0 12px;
 }
-.ac-input::placeholder{color:rgba(11,20,0,0.55)}
+.ac-input::placeholder{color:rgba(255,255,255,0.7);text-shadow:none}
 .ac-input:focus{outline:2px solid var(--lime);outline-offset:2px}
 .ac-list{
   position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:20;
@@ -77,8 +76,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ac-item .ac-code{color:var(--text3);font-size:11px;font-family:monospace;flex-shrink:0}
 .ac-empty{padding:9px 12px;font-size:12px;color:var(--text3)}
 .go-btn{
-  height:42px;background:var(--grad);color:#0b1400;border:none;
-  border-radius:10px;font-size:14px;font-weight:700;
+  height:42px;background:var(--grad);color:#ffffff;border:none;
+  border-radius:14px;font-size:14px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,0.3);
   padding:0 24px;cursor:pointer;white-space:nowrap;
   display:flex;align-items:center;gap:8px;transition:filter 0.15s,transform 0.1s
 }
@@ -102,6 +101,39 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .legend{display:flex;gap:12px;font-size:11px;color:var(--text2)}
 .leg-dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:middle}
 .chart-wrap{position:relative;width:100%;height:200px}
+
+/* DATE TILES (scrollable price-by-date cards) */
+.dates-scroll-row{display:flex;align-items:center;gap:8px}
+.dates-scroll{flex:1;display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;padding:2px 2px 8px}
+.dates-scroll::-webkit-scrollbar{display:none}
+.scroll-btn{
+  flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1px solid var(--border);
+  background:var(--card2);color:var(--text);font-size:16px;line-height:1;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:background 0.15s,transform 0.1s,opacity 0.2s
+}
+.scroll-btn:hover{background:var(--dark)}
+.scroll-btn:active{transform:scale(0.9)}
+.date-tile{
+  flex:0 0 64px;scroll-snap-align:start;text-align:center;
+  background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:10px 4px 8px;
+  opacity:0;transform:translateY(8px);animation:tileIn 0.4s ease forwards;
+}
+.date-tile.cheap{background:var(--green-bg);border-color:rgba(178,237,64,0.45)}
+.date-tile.exp{background:var(--red-bg);border-color:rgba(255,107,105,0.4)}
+.date-tile-day{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px}
+.date-tile-num{font-size:16px;font-weight:700;color:var(--text);margin-bottom:5px}
+.date-tile-price{font-size:11px;font-weight:600;color:var(--text2);white-space:nowrap}
+.date-tile-emoji{font-size:13px;margin-top:4px}
+@keyframes tileIn{to{opacity:1;transform:translateY(0)}}
+
+/* ENTRANCE ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.mc,.section-card,.fcard{animation:fadeUp 0.4s ease both}
+.mc:nth-child(1){animation-delay:0s}
+.mc:nth-child(2){animation-delay:.06s}
+.mc:nth-child(3){animation-delay:.12s}
+.mc:nth-child(4){animation-delay:.18s}
 
 /* DAYS */
 .days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
@@ -150,9 +182,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .error-box{background:var(--red-bg);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--red-text)}
 
 @media(max-width:640px){
-  .search-grid{grid-template-columns:1fr 1fr;}.go-btn{grid-column:span 2}
+  .search-grid{grid-template-columns:1fr 1fr;}
+  .go-btn{justify-content:center}
   .metrics{grid-template-columns:1fr 1fr}
   .reasons{grid-template-columns:1fr}
+  .days-grid{display:flex;overflow-x:auto;gap:8px;padding-bottom:4px;scrollbar-width:none}
+  .days-grid::-webkit-scrollbar{display:none}
+  .day-col{flex:0 0 44px}
+  .day-bar{width:20px}
+  .day-badge{font-size:8px;padding:1px 4px;white-space:nowrap}
+  .date-tile{flex:0 0 56px;padding:8px 3px 6px}
+  .date-tile-num{font-size:14px}
+  .date-tile-price{font-size:10px}
+  .scroll-btn{width:28px;height:28px;font-size:14px}
 }
 </style>
 </head>
@@ -182,12 +224,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="search-grid">
       <div class="field ac-field">
         <label>Откуда</label>
-        <input class="ac-input" id="from" type="text" autocomplete="off" placeholder="Город или аэропорт" value="Москва (MOW)" data-code="MOW">
+        <input class="ac-input" id="from" type="text" autocomplete="off" placeholder="Например: Москва (MOW)">
         <div class="ac-list" id="from-list"></div>
       </div>
       <div class="field ac-field">
         <label>Куда</label>
-        <input class="ac-input" id="to" type="text" autocomplete="off" placeholder="Город или аэропорт" value="Барселона (BCN)" data-code="BCN">
+        <input class="ac-input" id="to" type="text" autocomplete="off" placeholder="Например: Барселона (BCN)">
         <div class="ac-list" id="to-list"></div>
       </div>
       <div class="field">
@@ -209,8 +251,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script>
 const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 const WEEK = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
-
-let priceChart = null;
 
 (function initMonths(){
   const sel = document.getElementById('month');
@@ -382,10 +422,6 @@ function renderResults(data, origin, dest, month, year, mon, fromLabel, toLabel)
   const wdMin = Math.min(...wdAvg.filter(Boolean));
   const wdMax = Math.max(...wdAvg.filter(Boolean));
 
-  // chart colors
-  const barColors = vals.map(v => v <= minPrice*1.1 ? '#B2ED40' : v >= maxPrice*0.9 ? '#ff6b69' : '#48484a');
-  const labels = days.map(d => parseInt(d.split('-')[2]));
-
   // top 5 cheapest
   const sorted = [...data].sort((a,b)=>a.value-b.value).slice(0,5);
 
@@ -401,7 +437,7 @@ function renderResults(data, origin, dest, month, year, mon, fromLabel, toLabel)
 
     <div class="metrics">
       <div class="mc">
-        <div class="mc-label">Лучшая цена</div>
+        <div class="mc-label">🔥 Лучшая цена</div>
         <div class="mc-val lime-val">${fmt(minPrice)} ₽</div>
         <div class="mc-sub">${bestDayName}</div>
       </div>
@@ -411,12 +447,12 @@ function renderResults(data, origin, dest, month, year, mon, fromLabel, toLabel)
         <div class="mc-sub">за месяц</div>
       </div>
       <div class="mc">
-        <div class="mc-label">Худшая цена</div>
+        <div class="mc-label">📈 Худшая цена</div>
         <div class="mc-val red-val">${fmt(maxPrice)} ₽</div>
         <div class="mc-sub">${worstDayName}</div>
       </div>
       <div class="mc">
-        <div class="mc-label">Экономия</div>
+        <div class="mc-label">⚡ Экономия</div>
         <div class="mc-val lime-val">−${saving}%</div>
         <div class="mc-sub">лучший vs худший день</div>
       </div>
@@ -431,8 +467,24 @@ function renderResults(data, origin, dest, month, year, mon, fromLabel, toLabel)
           <span><span class="leg-dot" style="background:#ff6b69"></span>Дорого</span>
         </div>
       </div>
-      <div class="chart-wrap">
-        <canvas id="priceChart" role="img" aria-label="График цен по датам. Минимум ${fmt(minPrice)} руб, максимум ${fmt(maxPrice)} руб.">${fromCity} → ${toCity}: от ${fmt(minPrice)} до ${fmt(maxPrice)} рублей.</canvas>
+      <div class="dates-scroll-row">
+        <button class="scroll-btn" onclick="scrollDates(-1)" aria-label="Назад">‹</button>
+        <div class="dates-scroll" id="datesScroll">
+          ${days.map((d,i) => {
+            const v = prices[d];
+            const dnum = parseInt(d.split('-')[2]);
+            const wd = (new Date(d+'T12:00:00').getDay()+6)%7;
+            const tier = v <= minPrice*1.1 ? 'cheap' : v >= maxPrice*0.9 ? 'exp' : '';
+            const emoji = tier==='cheap' ? '🔥' : tier==='exp' ? '📈' : '';
+            return `<div class="date-tile ${tier}" style="animation-delay:${Math.min(i*22,380)}ms">
+              <div class="date-tile-day">${WEEK[wd]}</div>
+              <div class="date-tile-num">${dnum}</div>
+              <div class="date-tile-price">${fmt(v)} ₽</div>
+              ${emoji?`<div class="date-tile-emoji">${emoji}</div>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+        <button class="scroll-btn" onclick="scrollDates(1)" aria-label="Вперёд">›</button>
       </div>
     </div>
 
@@ -444,9 +496,9 @@ function renderResults(data, origin, dest, month, year, mon, fromLabel, toLabel)
           const h = Math.round(12 + (wdAvg[i]-wdMin)/(wdMax-wdMin||1)*52);
           const color = wdAvg[i] <= wdMin*1.1 ? '#B2ED40' : wdAvg[i] >= wdMax*0.9 ? '#ff6b69' : '#48484a';
           const badge = wdAvg[i] <= wdMin*1.1
-            ? `<div><span class="day-badge badge-cheap">лучший</span></div>`
+            ? `<div><span class="day-badge badge-cheap">🔥 лучший</span></div>`
             : wdAvg[i] >= wdMax*0.9
-            ? `<div><span class="day-badge badge-exp">дорого</span></div>` : '';
+            ? `<div><span class="day-badge badge-exp">📈 дорого</span></div>` : '';
           return `<div class="day-col">
             <div class="day-name">${name}</div>
             <div class="day-bar-wrap"><div class="day-bar" style="height:${h}px;background:${color}"></div></div>
@@ -505,22 +557,27 @@ function renderResults(data, origin, dest, month, year, mon, fromLabel, toLabel)
     </div>
   `;
 
-  if(priceChart){ priceChart.destroy(); }
-  priceChart = new Chart(document.getElementById('priceChart'),{
-    type:'bar',
-    data:{
-      labels,
-      datasets:[{data:vals,backgroundColor:barColors,borderRadius:3,borderSkipped:false}]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{backgroundColor:'#2c2c2e',titleColor:'#f4f4f3',bodyColor:'#f4f4f3',borderColor:'#3a3a3c',borderWidth:1,padding:8,callbacks:{label:c=>`${fmt(c.parsed.y)} ₽`}}},
-      scales:{
-        x:{ticks:{color:'#6e6e72',font:{size:10},maxTicksLimit:15,autoSkip:true},grid:{color:'rgba(255,255,255,0.06)'}},
-        y:{ticks:{color:'#6e6e72',font:{size:10},callback:v=>(v/1000).toFixed(0)+'k'},grid:{color:'rgba(255,255,255,0.06)'}}
-      }
-    }
-  });
+  setupDatesScroll();
+}
+
+/* ---------- ГОРИЗОНТАЛЬНАЯ ПРОКРУТКА ПЛАШЕК С ДАТАМИ ---------- */
+function scrollDates(dir){
+  const el = document.getElementById('datesScroll');
+  if(!el) return;
+  el.scrollBy({left: dir * (el.clientWidth * 0.8), behavior:'smooth'});
+}
+
+function setupDatesScroll(){
+  const el = document.getElementById('datesScroll');
+  if(!el) return;
+  const row = el.closest('.dates-scroll-row');
+  const [leftBtn, rightBtn] = row.querySelectorAll('.scroll-btn');
+  const update = () => {
+    leftBtn.style.opacity = el.scrollLeft <= 2 ? '0.35' : '1';
+    rightBtn.style.opacity = (el.scrollLeft + el.clientWidth >= el.scrollWidth - 2) ? '0.35' : '1';
+  };
+  el.addEventListener('scroll', update);
+  update();
 }
 </script>
 </body>
